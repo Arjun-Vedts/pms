@@ -44,7 +44,7 @@ public class ActionDaoImpl implements ActionDao{
 	private SimpleDateFormat sdf1=new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 	private static final Logger logger=LogManager.getLogger(ActionDaoImpl.class);
 	
-	private static final String EMPLOYEELIST="select a.emp_id,CONCAT(IFNULL(CONCAT(a.title,' '),''), a.emp_name) as 'empname' ,b.designation,a.lab_code FROM employee a,employee_desig b WHERE a.is_active='1' AND a.desig_id=b.desig_id AND a.lab_code=:LabCode ORDER BY a.sr_no=0,a.sr_no ";
+	private static final String EMPLOYEELIST="select a.emp_id,CONCAT(IFNULL(CONCAT(a.title,' '),''), a.emp_name) as 'empname' ,b.designation,a.lab_code FROM employee a,employee_desig b WHERE a.is_active='1' AND a.desig_id=b.desig_id AND a.lab_code=:LabCode AND a.emp_status NOT IN ('N') ORDER BY a.sr_no=0,a.sr_no ";
 	private static final String ASSIGNEDLIST="SELECT a.actionmainid,CONCAT(IFNULL(CONCAT(ab.title,' '),''), ab.emp_name) AS emp,dc.designation,a.actiondate,aas.enddate,a.actionitem,aas.actionstatus,aas.progress, aas.IsSeen , aas.actionassignid , (SELECT COUNT(am.actionmainid) FROM action_main am WHERE am.ParentActionid = a.actionmainid ) AS 'ChildActionCount',aas.actionno FROM action_main a,  employee ab ,employee_desig dc ,action_assign aas WHERE aas.actionmainid=a.actionmainid AND aas.assignee=ab.emp_id AND ab.is_active='1' AND dc.desig_id=ab.desig_id  AND aas.actionstatus<>'C' AND aas.assigneelabcode <> '@EXP' AND aas.assignor=:empid UNION SELECT a.actionmainid,CONCAT(IFNULL(CONCAT(ab.title,' '),''), ab.expertname) AS emp,'Expert' AS 'designation',a.actiondate,aas.enddate,a.actionitem,aas.actionstatus,aas.progress, aas.IsSeen , aas.actionassignid , (SELECT COUNT(am.actionmainid) FROM action_main am WHERE am.ParentActionid = a.actionmainid ) AS 'ChildActionCount',aas.actionno FROM action_main a,  expert ab , action_assign aas WHERE aas.actionmainid=a.actionmainid AND aas.assignee=ab.expertid AND ab.isactive='1' AND aas.actionstatus<>'C' AND aas.assigneelabcode = '@EXP' AND aas.assignor=:empid ORDER BY actionassignid DESC";
 	//isseen column has been removed  04-08-2021
 	//private static final String ASSIGNEDLIST="SELECT a.actionmainid,ab.empname,dc.designation,a.actiondate,a.enddate,a.actionitem,a.actionstatus,a.actionflag,a.createdby,a.createddate,(SELECT MAX(b.actionsubid) FROM action_sub b WHERE b.actionmainid = a.actionmainid) AS subid,(SELECT c.progress FROM action_sub c  WHERE c.actionmainid = a.actionmainid AND c.actionsubid = (SELECT MAX(b.actionsubid) FROM action_sub b WHERE b.actionmainid = a.actionmainid) )  AS progress, (SELECT c.remarks FROM action_sub c  WHERE c.actionmainid = a.actionmainid AND c.actionsubid = (SELECT MAX(b.actionsubid) FROM action_sub b WHERE b.actionmainid = a.actionmainid) )  AS remarks,a.revision FROM action_main a,  employee ab ,employee_desig dc WHERE a.assignee=ab.empid AND ab.isactive='1' AND dc.desigid=ab.desigid AND a.assignor=:empid and a.actionflag<>'Y'";
@@ -796,7 +796,7 @@ public class ActionDaoImpl implements ActionDao{
 		return LabInfoClusterLab;
 	}
 	
-	private static final String LABEMPLOYEELIST="SELECT a.emp_id,CONCAT(IFNULL(CONCAT(a.title,' '),''), a.emp_name) as 'empname',a.emp_no,b.designation FROM employee a,employee_desig b WHERE a.is_active=1 AND a.desig_id=b.desig_id AND a.lab_code=:labcode ORDER BY a.sr_no;";
+	private static final String LABEMPLOYEELIST="SELECT a.emp_id,CONCAT(IFNULL(CONCAT(a.title,' '),''), a.emp_name) as 'empname',a.emp_no,b.designation FROM employee a,employee_desig b WHERE a.is_active=1 AND a.emp_status IN ('P') AND a.desig_id=b.desig_id AND a.lab_code=:labcode ORDER BY a.sr_no;";
 	@Override
 	public List<Object[]> LabEmployeeList(String LabCode) throws Exception 
 	{
@@ -805,7 +805,7 @@ public class ActionDaoImpl implements ActionDao{
 		List<Object[]> ChairpersonEmployeeListFormation=(List<Object[]>)query.getResultList();
 		return ChairpersonEmployeeListFormation;
 	}
-	private static final String LABEMPFILTERFORACTION="SELECT a.emp_id,CONCAT(IFNULL(CONCAT(a.title,' '),''), a.emp_name) as 'empname',a.emp_no,b.designation FROM employee a,employee_desig b WHERE a.is_active=1 AND a.desig_id=b.desig_id AND a.emp_id NOT IN (SELECT b.assignee FROM  action_main a, action_assign b WHERE a.actionmainid=b.actionmainid AND b.assigneelabcode=:labcode AND (a.mainid=:mainid OR a.actionmainid=:mainid)) AND a.lab_code=:labcode";
+	private static final String LABEMPFILTERFORACTION="SELECT a.emp_id,CONCAT(IFNULL(CONCAT(a.title,' '),''), a.emp_name) as 'empname',a.emp_no,b.designation FROM employee a,employee_desig b WHERE a.is_active=1 AND a.desig_id=b.desig_id AND a.emp_status IN ('P') AND a.emp_id NOT IN (SELECT b.assignee FROM  action_main a, action_assign b WHERE a.actionmainid=b.actionmainid AND b.assigneelabcode=:labcode AND (a.mainid=:mainid OR a.actionmainid=:mainid)) AND a.lab_code=:labcode";
 	@Override
 	public List<Object[]> LabEmpListFilterForAction(String LabCode , String MainId) throws Exception
 	{

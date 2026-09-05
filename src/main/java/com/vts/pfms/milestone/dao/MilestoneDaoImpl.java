@@ -1,10 +1,13 @@
 	package com.vts.pfms.milestone.dao;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -31,9 +34,19 @@ import com.vts.pfms.milestone.model.MilestoneActivityPredecessor;
 import com.vts.pfms.milestone.model.MilestoneActivitySub;
 import com.vts.pfms.milestone.model.MilestoneActivitySubRev;
 import com.vts.pfms.milestone.model.MilestoneSchedule;
+import com.vts.pfms.milestone.model.ProjectEconomicImpact;
+import com.vts.pfms.milestone.model.ProjectEconomicImpactRev;
+import com.vts.pfms.milestone.model.ProjectInfrastructureUtilization;
+import com.vts.pfms.milestone.model.ProjectInfrastructureUtilizationRev;
+import com.vts.pfms.milestone.model.ProjectManPowerUtilization;
+import com.vts.pfms.milestone.model.ProjectManPowerUtilizationRev;
+import com.vts.pfms.milestone.model.ProjectResourceUtilization;
+import com.vts.pfms.milestone.model.ProjectTrainingUtilization;
+import com.vts.pfms.milestone.model.ProjectTrainingUtilizationRev;
 import com.vts.pfms.print.model.ProjectTechnicalWorkData;
 
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.NoResultException;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Query;
 import jakarta.transaction.Transactional;
@@ -48,13 +61,12 @@ public class MilestoneDaoImpl implements MilestoneDao {
 			+ "CONCAT(IFNULL(CONCAT(c.title,' '),(IFNULL(CONCAT(c.salutation, ' '), ''))), c.emp_name, ', ', e.Designation) AS 'OicEmpId1Name', \r\n"
 			+ "CONCAT(IFNULL(CONCAT(d.title,' '),(IFNULL(CONCAT(d.salutation, ' '), ''))), d.emp_name, ', ', f.Designation) AS 'OicEmpId2Name',\r\n"
 			+ "(SELECT MAX(e.revisionno) FROM milestone_activity_rev e WHERE a.milestoneactivityid=e.milestoneactivityid) AS rev,\r\n"
-			+ "a.acceptedby,a.isaccepted,a.statusremarks,a.progressstatus,a.Weightage,a.activitystatusid,b.project_id,a.dateofcompletion, a.OICEmpId, a.financialOutlay,a.oicempid1 \r\n"
+			+ "a.acceptedby,a.isaccepted,a.statusremarks,a.progressstatus,a.Weightage,a.activitystatusid,b.project_id,a.dateofcompletion, a.OICEmpId, a.financialOutlay,a.oicempid1, a.IsSunSet \r\n"
 			+ "FROM milestone_activity a,project_master b, employee c,employee d, employee_desig e, employee_desig f \r\n"
 			+ "WHERE a.projectid=b.project_id AND a.isactive = 1  AND a.oicempid=c.emp_id AND a.oicempid1=d.emp_id AND c.desig_id = e.desig_id AND d.desig_id = f.desig_id AND a.projectid=:ProjectId ORDER BY a.MilestoneNo";
 	private static final String PROJECTMASTER="SELECT a.project_id, a.project_code, a.project_name, a.project_short_name FROM project_master a WHERE a.is_active='1'";
-	private static final String EMPLOYEELISTALL="select a.emp_id,a.emp_name,b.designation,a.title,a.salutation FROM employee a,employee_desig b WHERE a.is_active='1' AND a.desig_id=b.desig_id ORDER BY a.sr_no=0,a.sr_no";
+	private static final String EMPLOYEELISTALL="select a.emp_id,a.emp_name,b.designation,a.title,a.salutation FROM employee a,employee_desig b WHERE a.is_active='1' AND a.desig_id=b.desig_id AND a.emp_status IN ('P','R','T') ORDER BY a.sr_no=0,a.sr_no";
     private static final String MILESTONECOUNT="Select count(*) from milestone_activity where isactive='1' and projectid=:ProjectId";
-
 	private static final String MA="SELECT a.milestoneactivityid,b.project_name,a.startdate,a.enddate,a.activityname,a.milestoneno,\r\n"
 			+ "c.emp_name,d.emp_name AS emp,a.oicempid,a.oicempid1,a.projectid,a.progressstatus,a.revisionno,a.acceptedby,\r\n"
 			+ "a.accepteddate,a.activitytype,a.Weightage,e.activitytype AS TYPE, c.lab_code AS 'LabCode1', d.lab_code AS 'LabCode2', (SELECT COALESCE(a.ModifiedDate, a.CreatedDate) > MAX(c.CreatedDate) FROM `milestone_activity_rev` c WHERE c.MilestoneActivityId=:id)AS 'IsChange' \r\n"
@@ -85,8 +97,8 @@ public class MilestoneDaoImpl implements MilestoneDao {
     private static final String SUBDATA="FROM MilestoneActivitySub WHERE ActivitySubId=:id"; 
 	private static final String PROJECTDETAILS="SELECT a.project_id,a.project_code,a.project_name,a.project_short_name FROM project_master a WHERE a.project_id=:projectid";
 	private static final String MAASSIGNEELIST="CALL Pfms_Milestone_Oic_List(:ProjectId,:empid)";
-	private static final String PROJECTEMPLIST="SELECT a.emp_id, CONCAT(IFNULL(CONCAT(a.title,' '),(IFNULL(CONCAT(a.salutation, ' '), ''))), a.emp_name) AS 'EmpName',b.designation FROM employee a,employee_desig b,project_employee pe  WHERE a.is_active='1' AND pe.isactive='1' AND a.desig_id=b.desig_id  AND pe.empid=a.emp_id AND pe.projectid=:projectid AND a.lab_code=:labcode ORDER BY a.sr_no=0,a.sr_no";
-	private static final String PROJECTEMPLISTEDIT="SELECT a.empid, CONCAT(IFNULL(CONCAT(a.Title,' '),(IFNULL(CONCAT(a.Salutation, ' '), ''))), a.EmpName) AS 'EmpName',b.designation,a.srno as srno FROM employee a,employee_desig b,project_employee pe  WHERE a.isactive='1' AND a.DesigId=b.DesigId  AND pe.empid=a.empid AND pe.projectid=:projectid  union SELECT a.empid, CONCAT(IFNULL(CONCAT(a.Title,' '),(IFNULL(CONCAT(a.Salutation, ' '), ''))), a.EmpName) AS 'EmpName',b.designation,a.srno as srno FROM employee a,employee_desig b WHERE a.isactive='1' AND a.DesigId=b.DesigId  AND a.empid=:id ORDER BY srno=0, srno";
+	private static final String PROJECTEMPLIST="SELECT a.emp_id, CONCAT(IFNULL(CONCAT(a.title,' '),(IFNULL(CONCAT(a.salutation, ' '), ''))), a.emp_name) AS 'EmpName',b.designation FROM employee a,employee_desig b,project_employee pe  WHERE a.is_active='1' AND pe.isactive='1' AND a.emp_status IN ('P','R','T') AND a.desig_id=b.desig_id  AND pe.empid=a.emp_id AND pe.projectid=:projectid AND a.lab_code=:labcode ORDER BY a.sr_no=0,a.sr_no";
+	private static final String PROJECTEMPLISTEDIT="SELECT a.empid, CONCAT(IFNULL(CONCAT(a.Title,' '),(IFNULL(CONCAT(a.Salutation, ' '), ''))), a.EmpName) AS 'EmpName',b.designation,a.srno as srno FROM employee a,employee_desig b,project_employee pe  WHERE a.isactive='1' AND a.emp_status IN ('P','R','T') AND a.DesigId=b.DesigId  AND pe.empid=a.empid AND pe.projectid=:projectid  union SELECT a.empid, CONCAT(IFNULL(CONCAT(a.Title,' '),(IFNULL(CONCAT(a.Salutation, ' '), ''))), a.EmpName) AS 'EmpName',b.designation,a.srno as srno FROM employee a,employee_desig b WHERE a.isactive='1' AND a.DesigId=b.DesigId  AND a.empid=:id ORDER BY srno=0, srno";
 	private static final String PROJECTASSINEE="SELECT DISTINCT(a.projectid),a.projectcode,a.projectname FROM project_master a,milestone_activity b WHERE a.projectid=b.projectid and (b.oicempid=:empid or b.oicempid1=:empid) and   a.isactive='1'";
 	private static final String ASSIGNUPDATE="UPDATE milestone_activity SET isaccepted='A',ModifiedBy=:modifiedby, ModifiedDate=:modifieddate WHERE milestoneactivityid=:id";
 	private static final String ACCEPTUPDATE="UPDATE milestone_activity SET isaccepted='Y',acceptedby=:acceptedby,accepteddate=:accepteddate,ModifiedBy=:modifiedby, ModifiedDate=:modifieddate WHERE milestoneactivityid=:id";
@@ -104,7 +116,7 @@ public class MilestoneDaoImpl implements MilestoneDao {
    
     private static final String FILEREPREV="UPDATE file_rep_new SET ReleaseDoc=:release,VersionDoc=:version where filerepid=:id";
     private static final String FILEDETAILS="SELECT * FROM(SELECT a.filerepid,b.filerepuploadid,b.filepath,b.filenameui,b.filename,b.filepass,b.ReleaseDoc,b.VersionDoc FROM file_rep_new a,file_rep_upload b WHERE a.filerepid=b.filerepid AND b.filerepuploadid=:fileid)AS a JOIN (SELECT MAX(DocAmendmentId) AS 'AmendmentDocId' FROM file_doc_amendment WHERE FileRepUploadId=:fileid ) AS b  ";
-    private static final String ALLEMPNAMEDESIGLIST="SELECT e.emp_id , CONCAT(IFNULL(CONCAT(e.title,' '),(IFNULL(CONCAT(e.salutation, ' '), ''))), e.emp_name) AS 'EmpName', ed.designation FROM employee e, employee_desig ed WHERE e.is_active=1 AND e.desig_id=ed.desig_id and e.lab_code=:labcode ";
+    private static final String ALLEMPNAMEDESIGLIST="SELECT e.emp_id , CONCAT(IFNULL(CONCAT(e.title,' '),(IFNULL(CONCAT(e.salutation, ' '), ''))), e.emp_name) AS 'EmpName', ed.designation FROM employee e, employee_desig ed WHERE e.is_active=1 AND e.emp_status IN ('P','R','T') AND e.desig_id=ed.desig_id and e.lab_code=:labcode ORDER BY e.sr_no = 0, e.sr_no";
 	
     private static final String MILESTONESCHEDULELIST="SELECT milestonescheduleid,projectid,activityname,milestoneno,orgstartdate,orgenddate,startdate,enddate,statusremarks FROM milestone_schedule WHERE isactive=1 AND projectid=:projectid";
     private static final String MILESTONESCHEDULECOUNT="SELECT COUNT(*) FROM milestone_schedule WHERE isactive='1' AND projectid=:projectid";
@@ -1050,7 +1062,7 @@ public class MilestoneDaoImpl implements MilestoneDao {
 	}
 	
 
-	private static final String MILESTONEACTIVITYLISTNEW = "SELECT a.milestoneactivityid AS obid,0 AS 'parentactivityid',a.startdate,a.enddate,a.activityname,a.progressstatus,a.Weightage,a.dateofcompletion, b.activitystatus,a.activitystatusid,a.revisionno AS 'rev' ,d.activitytypeid, d.activitytype ,a.oicempid,e.empname,a.oicempid1,0 AS 'activitylevelid' FROM milestone_activity a,milestone_activity_status b, milestone_activity_type d ,employee e WHERE a.activitystatusid=b.activitystatusid AND a.isactive = 1 AND a.activitytype=d.activitytypeid AND a.oicempid=e.empid AND a.projectid=:projectid";
+	private static final String MILESTONEACTIVITYLISTNEW = "SELECT a.milestoneactivityid AS obid,0 AS 'parentactivityid',a.startdate,a.enddate,a.activityname,a.progressstatus,a.Weightage,a.dateofcompletion, b.activitystatus,a.activitystatusid,a.revisionno AS 'rev' ,d.activitytypeid, d.activitytype ,a.oicempid,e.emp_name,a.oicempid1,0 AS 'activitylevelid' FROM milestone_activity a,milestone_activity_status b, milestone_activity_type d ,employee e WHERE a.activitystatusid=b.activitystatusid AND a.isactive = 1 AND a.activitytype=d.activitytypeid AND a.oicempid=e.emp_id AND a.projectid=:projectid";
 	@Override
 	public List<Object[]> MilestoneActivityListNew(String ProjectId) throws Exception 
 	{
@@ -1882,7 +1894,7 @@ public class MilestoneDaoImpl implements MilestoneDao {
 
 	@Override
 	public Object[] getprojectDetails(String projectId) throws Exception {
-		Query query = manager.createNativeQuery("SELECT * from project_master WHERE ProjectId=:projectId");
+		Query query = manager.createNativeQuery("SELECT * from project_master WHERE project_id=:projectId");
 		query.setParameter("projectId", Long.parseLong(projectId));
 		List<Object[]> list =  (List<Object[]>) query.getResultList();
 		if(list.size()>0) {
@@ -2030,6 +2042,620 @@ public class MilestoneDaoImpl implements MilestoneDao {
 			}catch (Exception e) {
 				e.printStackTrace();
 				return 0;
+			}
+		}
+		
+		private static final String SUNSETMILEUPDATE = "UPDATE milestone_activity SET IsSunSet = :isSunSet WHERE MilestoneActivityId = :mainId";
+		private static final String SUNSETSUBMILEUPDATE = "UPDATE milestone_activity_level SET IsSunSet = :isSunSet WHERE ActivityId IN :subId";
+		@Override
+		@Transactional
+		public long updateMainMileStoneSunSet(Long milestoneActivityId, String isSunSet) {
+		    try {
+		        MilestoneActivity activity = manager.find(MilestoneActivity.class, milestoneActivityId);
+		        if (activity == null) {
+		            return 0; // nothing to update
+		        }
+
+		        Set<Long> subIds = getSubMilestonesId(String.valueOf(milestoneActivityId));
+
+		        // toggle based on current state
+		        String newSunSetValue = "Y".equalsIgnoreCase(activity.getIsSunSet()) ? "N" : "Y";
+
+		        long count = 0;
+
+		        Query query = manager.createNativeQuery(SUNSETMILEUPDATE);
+		        query.setParameter("mainId", milestoneActivityId);
+		        query.setParameter("isSunSet", newSunSetValue);
+		        count += query.executeUpdate();
+
+		        if (subIds != null && !subIds.isEmpty()) {
+		        	
+		        	System.out.println(subIds);
+		            Query subQuery = manager.createNativeQuery(SUNSETSUBMILEUPDATE);
+		            subQuery.setParameter("subId", subIds);
+		            subQuery.setParameter("isSunSet", newSunSetValue);
+		            count += subQuery.executeUpdate();
+		        }
+
+		        return count;
+
+		    } catch (Exception e) {
+		        e.printStackTrace();
+		        return 0;
+		    }
+		}
+
+		@Override
+		public long updateSubMileStoneSunSet(Long activityId, String isSunSet) {
+			try {
+				MilestoneActivityLevel activity = manager.find(MilestoneActivityLevel.class, activityId);
+				
+				isSunSet = "Y".equalsIgnoreCase(activity.getIsSunSet()) ? "N" : "Y";
+				Query query = manager.createNativeQuery(SUNSETSUBMILEUPDATE);
+				query.setParameter("subId",activityId);
+				query.setParameter("isSunSet",isSunSet);
+				return query.executeUpdate();
+			}catch (Exception e) {
+				e.printStackTrace();
+				return 0;
+			}
+		}
+
+		private static final String MILESTONESUBLEVELIDS = """				
+					WITH levels AS (
+					    SELECT 
+					        a.ActivityId AS level1,
+					        b.ActivityId AS level2,
+					        c.ActivityId AS level3,
+					        d.ActivityId AS level4,
+					        e.ActivityId AS level5
+					    FROM milestone_activity main 
+					    LEFT JOIN milestone_activity_level a ON a.ParentActivityId = main.MilestoneActivityId AND a.ActivityLevelId = 1
+					    LEFT JOIN milestone_activity_level b ON b.ParentActivityId = a.ActivityId AND b.ActivityLevelId = 2
+					    LEFT JOIN milestone_activity_level c ON c.ParentActivityId = b.ActivityId AND c.ActivityLevelId = 3
+					    LEFT JOIN milestone_activity_level d ON d.ParentActivityId = c.ActivityId AND d.ActivityLevelId = 4
+					    LEFT JOIN milestone_activity_level e ON e.ParentActivityId = d.ActivityId AND e.ActivityLevelId = 5
+					    WHERE main.MilestoneActivityId = :mainId
+					)
+					SELECT level1 AS SubLevelId FROM levels WHERE level1 IS NOT NULL
+					UNION
+					SELECT level2 FROM levels WHERE level2 IS NOT NULL
+					UNION
+					SELECT level3 FROM levels WHERE level3 IS NOT NULL
+					UNION
+					SELECT level4 FROM levels WHERE level4 IS NOT NULL
+					UNION
+					SELECT level5 FROM levels WHERE level5 IS NOT NULL;
+				""";
+		@Override
+		public Set<Long> getSubMilestonesId(String milestoneActivityId) throws Exception {
+
+		    Query query = manager.createNativeQuery(MILESTONESUBLEVELIDS);
+		    query.setParameter("mainId", Long.parseLong(milestoneActivityId));
+
+		    @SuppressWarnings("unchecked")
+		    List<Object> results = query.getResultList();
+
+		    Set<Long> subLevelIds = new LinkedHashSet<>();
+		    for (Object result : results) {
+		        if (result != null) {
+		            subLevelIds.add(((Number) result).longValue());
+		        }
+		    }
+
+		    return subLevelIds;
+		}
+		
+		private static final String MANPOWERCOUNTS = """
+				   SELECT a.resource_utilization_id,a.project_id,a.financial_year,a.quarter,b.revision_no, 
+					    SUM(CASE WHEN b.desig_cadre = 'DRDS'
+						     THEN b.man_power_count ELSE 0 END) AS scientist_count,
+					    SUM(CASE WHEN b.desig_cadre = 'DTDC'
+						     THEN b.man_power_count ELSE 0 END) AS technician_count,
+					    SUM(CASE WHEN b.desig_cadre = 'Admin & Allied'
+						     THEN b.man_power_count ELSE 0 END) AS admin_and_allience_count,
+					    SUM(CASE WHEN b.desig_cadre = 'DRDS'
+						     THEN b.man_power_days ELSE 0 END) AS scientist_days_count,
+					    SUM(CASE WHEN b.desig_cadre = 'DTDC'
+						     THEN b.man_power_days ELSE 0 END) AS technician_days_count,
+					    SUM(CASE WHEN b.desig_cadre = 'Admin & Allied'
+						     THEN b.man_power_days ELSE 0 END) AS admin_and_allience_days_count
+					FROM project_resource_utilization a 
+					INNER JOIN project_manpower_utilization b ON b.resource_utilization_id = a.resource_utilization_id
+					WHERE a.project_id = :projectId AND a.financial_year = :finYear AND a.quarter = :quarter
+					GROUP BY a.resource_utilization_id, a.project_id, a.financial_year, a.quarter, b.revision_no;
+				"""; 
+		@Override
+		public Object[] getManPowerUtilizationCounts(String projectId, String finYear, String quarter) throws Exception {
+			try {
+				Query query = manager.createNativeQuery(MANPOWERCOUNTS);
+			    query.setParameter("projectId", projectId);
+			    query.setParameter("finYear", finYear);
+			    query.setParameter("quarter", quarter);
+			    
+			    @SuppressWarnings("unchecked")
+				List<Object[]> rows = query.getResultList();
+				
+			    return rows.isEmpty() ? null : rows.get(0);
+			}catch (Exception e) {
+				e.printStackTrace();
+				return null;
+			}
+		}
+
+		
+		@Override
+		public long addManPowerUtilization(ProjectManPowerUtilization entity) throws Exception {
+			entity = manager.merge(entity);
+			manager.flush();
+			return entity.getManPowerUtilizationId();
+		}
+		
+		@Override
+		public long saveProjectResourceUtilization(ProjectResourceUtilization entity) throws Exception {
+			entity = manager.merge(entity);
+			manager.flush();
+
+			return entity.getResourceUtilizationId();
+		}
+		
+		@Override
+		public ProjectResourceUtilization findOrCreateResourceUtilization(Long projectId, String finYear, String quarter, String username) throws Exception{
+
+		    if (projectId == null) {
+		        throw new IllegalArgumentException("Project is required.");
+		    }
+		    if (finYear == null || finYear.isBlank()) {
+		        throw new IllegalArgumentException("Financial year is required.");
+		    }
+		    if (quarter == null || quarter.isBlank()) {
+		        throw new IllegalArgumentException("Quarter is required.");
+		    }
+
+		    String createdBy = (username != null && !username.isBlank()) ? username : "SYSTEM";
+
+		    String jpql = "SELECT r FROM ProjectResourceUtilization r WHERE r.projectId = :projectId AND r.financialYear = :fy AND r.quarter = :q";
+		    try {
+		        return manager.createQuery(jpql, ProjectResourceUtilization.class)
+		                .setParameter("projectId", projectId)
+		                .setParameter("fy", finYear)
+		                .setParameter("q", quarter)
+		                .getSingleResult();
+		    } catch (NoResultException e) {
+		    	ProjectResourceUtilization ru = new ProjectResourceUtilization();
+		        ru.setProjectId(projectId);
+		        ru.setFinancialYear(finYear);
+		        ru.setQuarter(quarter);
+		        ru.setCreatedBy(createdBy);
+		        ru.setCreatedDate(LocalDateTime.now());
+		        ru.setIsActive(1);
+		        manager.persist(ru);
+		        manager.flush();
+		        return ru;
+		    }
+		}
+		
+		@Override
+		public long saveProjectInfrastructureUtilization(ProjectInfrastructureUtilization entity) throws Exception{
+			entity = manager.merge(entity);
+			manager.flush();
+
+			return entity.getInfrastructureUtilizationId();
+		}
+		
+		private static final String INFRASTRUCTURELIST = """
+					SELECT a.resource_utilization_id, a.project_id,a.financial_year,a.quarter,b.revision_no,b.infrastructure_utilization_id,b.name_of_infrastructure,b.days_utilized
+					FROM project_resource_utilization a
+					INNER JOIN project_infrastructure_utilization b ON b.resource_utilization_id =a.resource_utilization_id AND b.is_active = 1
+					WHERE a.project_id = :projectId AND a.financial_year = :finYear AND a.quarter = :quarter
+				""";
+		@Override
+		public List<Object[]> getInfrastructureItems(String projectId, String finYear, String quarter) throws Exception {
+			try {
+				Query query = manager.createNativeQuery(INFRASTRUCTURELIST);
+			    query.setParameter("projectId", projectId);
+			    query.setParameter("finYear", finYear);
+			    query.setParameter("quarter", quarter);
+			    
+				return (List<Object[]>) query.getResultList();
+			}catch (Exception e) {
+				e.printStackTrace();
+				return List.of();
+			}
+		}
+		
+		@Override
+		public ProjectResourceUtilization findResourceUtilizationId(Long projectId, String finYear, String quarter) throws Exception {
+		    try {
+		        return manager.createQuery(
+		                "SELECT r FROM ProjectResourceUtilization r WHERE r.projectId = :pid AND r.financialYear = :fy AND r.quarter = :q", ProjectResourceUtilization.class)
+		                .setParameter("pid", projectId).setParameter("fy", finYear).setParameter("q", quarter)
+		                .getSingleResult();
+		    } catch (NoResultException e) {
+		        return null;
+		    }
+		}
+
+		@Override
+		public List<ProjectInfrastructureUtilization> getActiveInfrastructure(Long resourceUtilizationId) throws Exception {
+		    String jpql = "SELECT p FROM ProjectInfrastructureUtilization p WHERE p.resourceUtilizationId = :ruId AND p.isActive = 1";
+		    return manager.createQuery(jpql, ProjectInfrastructureUtilization.class)
+		            .setParameter("ruId", resourceUtilizationId)
+		            .getResultList();
+		}
+
+		@Override
+		public void deleteProjectInfrastructureUtilization(ProjectInfrastructureUtilization entity) throws Exception {
+		    ProjectInfrastructureUtilization managed = manager.contains(entity) ? entity : manager.merge(entity);
+		    manager.remove(managed);
+		    manager.flush();
+		}
+
+		@Override
+		public void updateProjectInfrastructureUtilization(ProjectInfrastructureUtilization entity) throws Exception {
+			entity = manager.merge(entity);
+		    manager.flush();
+		}
+
+		@Override
+		public long saveProjectInfrastructureUtilizationRev(ProjectInfrastructureUtilizationRev entity) throws Exception {
+			entity = manager.merge(entity);
+		    manager.flush();
+		    return entity.getInfrastructureUtilizationRevId();
+		}
+		
+		@Override
+		public List<ProjectManPowerUtilization> getManPowerUtilization(Long resourceUtilizationId) throws Exception {
+			String jpql = "SELECT p FROM ProjectManPowerUtilization p WHERE p.resourceUtilizationId = :ruId AND p.isActive = 1";
+		    return manager.createQuery(jpql, ProjectManPowerUtilization.class)
+		            .setParameter("ruId", resourceUtilizationId)
+		            .getResultList();
+		}
+		
+		@Override
+		public long addManPowerUtilizationRevision(ProjectManPowerUtilizationRev entity) throws Exception {
+			entity = manager.merge(entity);
+		    manager.flush();
+		    return entity.getManPowerUtilizationRevId();
+		}
+		
+		@Override
+		public long saveProjectTrainingUtilization(ProjectTrainingUtilization entity) throws Exception {
+		    entity = manager.merge(entity);
+		    manager.flush();
+		    return entity.getTrainingUtilizationId();
+		}
+
+		private static final String TRAININGLIST = """
+		            SELECT a.resource_utilization_id, a.project_id, a.financial_year, a.quarter, b.revision_no, 
+		                   b.training_utilization_id, b.name_of_training, NULL as no_of_participants, b.cost
+		            FROM project_resource_utilization a
+		            INNER JOIN project_training_utilization b ON b.resource_utilization_id = a.resource_utilization_id AND b.is_active = 1
+		            WHERE a.project_id = :projectId AND a.financial_year = :finYear AND a.quarter = :quarter
+		        """;
+
+		@Override
+		public List<Object[]> getTrainingItems(String projectId, String finYear, String quarter) throws Exception {
+		    try {
+		        Query query = manager.createNativeQuery(TRAININGLIST);
+		        query.setParameter("projectId", projectId);
+		        query.setParameter("finYear", finYear);
+		        query.setParameter("quarter", quarter);
+		        
+		        return (List<Object[]>) query.getResultList();
+		    } catch (Exception e) {
+		        e.printStackTrace();
+		        return List.of();
+		    }
+		}
+
+		@Override
+		public List<ProjectTrainingUtilization> getActiveTraining(Long resourceUtilizationId) throws Exception {
+		    String jpql = "SELECT p FROM ProjectTrainingUtilization p WHERE p.resourceUtilizationId = :ruId AND p.isActive = 1";
+		    return manager.createQuery(jpql, ProjectTrainingUtilization.class)
+		            .setParameter("ruId", resourceUtilizationId)
+		            .getResultList();
+		}
+
+		@Override
+		public void deleteProjectTrainingUtilization(ProjectTrainingUtilization entity) throws Exception {
+		    ProjectTrainingUtilization managed = manager.contains(entity) ? entity : manager.merge(entity);
+		    manager.remove(managed);
+		    manager.flush();
+		}
+
+		@Override
+		public void updateProjectTrainingUtilization(ProjectTrainingUtilization entity) throws Exception {
+		    entity = manager.merge(entity);
+		    manager.flush();
+		}
+
+		@Override
+		public long saveProjectTrainingUtilizationRev(ProjectTrainingUtilizationRev entity) throws Exception {
+		    entity = manager.merge(entity);
+		    manager.flush();
+		    return entity.getTrainingUtilizationRevId();
+		}
+		
+
+		@Override
+		public long saveProjectEconomicImpact(ProjectEconomicImpact entity) throws Exception {
+		    entity = manager.merge(entity);
+		    manager.flush();
+		    return entity.getEconomicImpactId();
+		}
+
+		@Override
+		public long saveProjectEconomicImpactRev(ProjectEconomicImpactRev entity) throws Exception {
+		    entity = manager.merge(entity);
+		    manager.flush();
+		    return entity.getEconomicImpactRevId();
+		}
+		
+		@Override
+		public List<ProjectEconomicImpact> getEconomicImpact(Long projectId) throws Exception {
+		    String jpql = "SELECT p FROM ProjectEconomicImpact p WHERE p.projectId = :projectId AND p.isActive = 1";
+		    return manager.createQuery(jpql, ProjectEconomicImpact.class)
+		            .setParameter("projectId", projectId)
+		            .getResultList();
+		}
+		
+		@Override
+		public ProjectEconomicImpact getEconomiImpactById(Long economicImpactId) {
+			String jpql = "SELECT p FROM ProjectEconomicImpact p WHERE p.economicImpactId = :economicImpactId";
+		    return manager.createQuery(jpql, ProjectEconomicImpact.class)
+		            .setParameter("economicImpactId", economicImpactId)
+		            .getSingleResult();
+		}
+		
+		@Override
+		public List<Object[]> getInfrastructureRevisionList(Long resourceUtilizationId) throws Exception {
+			try {
+				String sql = """
+						SELECT COUNT(a.infrastructure_utilization_rev_id) AS 'revision_count', a.revision_no, a.created_by, a.revision_date
+						FROM project_infrastructure_utilization_rev a
+						WHERE a.resource_utilization_id = :resourceUtilizationId 
+						GROUP BY a.revision_no, a.created_by, a.revision_date
+						""";
+				Query query = manager.createNativeQuery(sql);
+			    query.setParameter("resourceUtilizationId", resourceUtilizationId);
+			           
+			    return (List<Object[]>) query.getResultList();
+			}catch (Exception e) {
+				e.printStackTrace();
+				return List.of();
+			}
+		}
+		
+		
+		@Override
+		public List<Object[]> getInfrastructureRevisionItemsList(Long resourceUtilizationId,Long revisionNo) throws Exception {
+			try {
+				String sql = """
+						SELECT a.infrastructure_utilization_rev_id, a.resource_utilization_id, a.name_of_infrastructure, a.days_utilized,a.revision_no
+						FROM project_infrastructure_utilization_rev a
+						WHERE a.resource_utilization_id = :resourceUtilizationId AND revision_no = :revisionNo
+						""";
+				Query query = manager.createNativeQuery(sql);
+			    query.setParameter("resourceUtilizationId", resourceUtilizationId);
+			    query.setParameter("revisionNo", revisionNo);
+			           
+			    return (List<Object[]>) query.getResultList();
+			}catch (Exception e) {
+				e.printStackTrace();
+				return List.of();
+			}
+		}
+
+		@Override
+		public List<Object[]> getTrainingRevisionList(Long resourceUtilizationId) throws Exception {
+			try {
+				String sql = """
+						SELECT COUNT(a.training_utilization_rev_id) AS 'revision_count', a.revision_no, a.created_by, a.revision_date
+						FROM project_training_utilization_rev a
+						WHERE a.resource_utilization_id = :resourceUtilizationId 
+						GROUP BY a.revision_no, a.created_by, a.revision_date
+						""";
+				Query query = manager.createNativeQuery(sql);
+			    query.setParameter("resourceUtilizationId", resourceUtilizationId);
+			           
+			    return (List<Object[]>) query.getResultList();
+			}catch (Exception e) {
+				e.printStackTrace();
+				return List.of();
+			}
+		}
+		
+		@Override
+		public List<Object[]> getManpowerRevisionList(Long resourceUtilizationId) throws Exception {
+			try {
+				String sql = """
+						SELECT COUNT(DISTINCT a.revision_no) AS 'revision_count', a.revision_no, a.created_by, a.revision_date
+						FROM project_manpower_utilization_rev a
+						WHERE a.resource_utilization_id = :resourceUtilizationId 
+						GROUP BY a.revision_no, a.created_by, a.revision_date
+						""";
+				Query query = manager.createNativeQuery(sql);
+			    query.setParameter("resourceUtilizationId", resourceUtilizationId);
+			           
+			    return (List<Object[]>) query.getResultList();
+			}catch (Exception e) {
+				e.printStackTrace();
+				return List.of();
+			}
+		}
+		
+		@Override
+		public List<Object[]> getTrainingRevisionItemsList(Long resourceUtilizationId, long revisionNo) throws Exception {
+			try {
+				String sql = """
+						SELECT a.training_utilization_rev_id, a.resource_utilization_id, a.name_of_training, a.cost,a.revision_no
+						FROM project_training_utilization_rev a
+						WHERE a.resource_utilization_id = :resourceUtilizationId AND revision_no = :revisionNo
+						""";
+				Query query = manager.createNativeQuery(sql);
+			    query.setParameter("resourceUtilizationId", resourceUtilizationId);
+			    query.setParameter("revisionNo", revisionNo);
+			           
+			    return (List<Object[]>) query.getResultList();
+			}catch (Exception e) {
+				e.printStackTrace();
+				return List.of();
+			}
+		}
+		
+		@Override
+		public Object[] getManpowerRevisionRow(Long resourceUtilizationId, Long revisionNo) {
+		    String sql = """
+						SELECT b.revision_no, 
+						    SUM(CASE WHEN b.desig_cadre = 'DRDS'
+							     THEN b.man_power_count ELSE 0 END) AS scientist_count,
+						    SUM(CASE WHEN b.desig_cadre = 'DTDC'
+							     THEN b.man_power_count ELSE 0 END) AS technician_count,
+						    SUM(CASE WHEN b.desig_cadre = 'Admin & Allied'
+							     THEN b.man_power_count ELSE 0 END) AS admin_and_allience_count,
+						    SUM(CASE WHEN b.desig_cadre = 'DRDS'
+							     THEN b.man_power_days ELSE 0 END) AS scientist_days_count,
+						    SUM(CASE WHEN b.desig_cadre = 'DTDC'
+							     THEN b.man_power_days ELSE 0 END) AS technician_days_count,
+						    SUM(CASE WHEN b.desig_cadre = 'Admin & Allied'
+							     THEN b.man_power_days ELSE 0 END) AS admin_and_allience_days_count
+						FROM project_manpower_utilization_rev b 
+						WHERE b.resource_utilization_id = :ruId AND b.revision_no = :revNo
+						GROUP BY b.revision_no;
+		             """;
+		    Query query = manager.createNativeQuery(sql);
+		    query.setParameter("ruId", resourceUtilizationId);
+		    query.setParameter("revNo", revisionNo);
+		           
+		    List<Object[]> rev = (List<Object[]>) query.getResultList();
+
+		    return rev.isEmpty() ? null : rev.get(0);
+		}
+		
+		@Override
+		public List<Object[]> getEconomicImpactRevisionList(Long projectId) throws Exception {
+		    String sql = "SELECT r.revision_no, r.revision_date, COALESCE(r.modified_by, r.created_by) FROM project_economic_impact_rev r WHERE r.project_id = :pid ";
+		    
+		    Query query = manager.createNativeQuery(sql);
+		    query.setParameter("pid", projectId);
+		    
+		    return (List<Object[]>) query.getResultList();
+		}
+
+		@Override
+		public ProjectEconomicImpactRev getEconomicImpactRevByProjectAndRevision(Long projectId, Long revisionNo) throws Exception {
+		    String jpql = "SELECT r FROM ProjectEconomicImpactRev r WHERE r.projectId = :pid AND r.revisionNo = :rev";
+		    Query query = manager.createQuery(jpql, ProjectEconomicImpactRev.class);
+		    query.setParameter("pid", projectId);
+		    query.setParameter("rev", revisionNo);
+		    List<ProjectEconomicImpactRev> list = (List<ProjectEconomicImpactRev>)query.getResultList();
+		    
+		    return list.isEmpty() ? null : list.get(0);
+		}
+		
+		@Override
+		public List<Object[]> getProjectResourceUtilizationByProjectId(Long projectId,String finYear) throws Exception {
+			String jpql = """
+					SELECT a.resource_utilization_id, a.project_id, a.financial_year, a.quarter,				
+					    SUM(CASE WHEN b.desig_cadre = 'DRDS' THEN b.man_power_count ELSE 0 END) AS scientist_count,
+					    SUM(CASE WHEN b.desig_cadre = 'DTDC' THEN b.man_power_count ELSE 0 END) AS technician_count,
+					    SUM(CASE WHEN b.desig_cadre = 'Admin & Allied' THEN b.man_power_count ELSE 0 END) AS admin_and_alliance_count,				
+					    SUM(CASE WHEN b.desig_cadre = 'DRDS' THEN b.man_power_days ELSE 0 END) AS scientist_days_count,				
+					    SUM(CASE WHEN b.desig_cadre = 'DTDC' THEN b.man_power_days ELSE 0 END) AS technician_days_count,
+					    SUM(CASE WHEN b.desig_cadre = 'Admin & Allied' THEN b.man_power_days ELSE 0 END) AS admin_and_alliance_days_count,
+						SUM(CASE WHEN b.desig_cadre = 'DRDS' THEN (b.man_power_count * b.man_power_days) ELSE 0 END) AS scientist_total_person_days,
+						SUM(CASE WHEN b.desig_cadre = 'DTDC' THEN (b.man_power_count * b.man_power_days) ELSE 0 END) AS technician_total_person_days,
+						SUM(CASE WHEN b.desig_cadre = 'Admin & Allied' THEN (b.man_power_count * b.man_power_days) ELSE 0 END) AS admin_and_alliance_total_person_days
+					FROM project_resource_utilization a 				
+					INNER JOIN project_manpower_utilization b
+				    ON b.resource_utilization_id = a.resource_utilization_id
+					WHERE a.project_id = :pid AND a.financial_year = :finYear
+					GROUP BY a.resource_utilization_id, a.project_id, a.financial_year, a.quarter
+					ORDER BY a.quarter ASC;
+					""";
+		    Query query = manager.createNativeQuery(jpql);
+		    query.setParameter("pid", projectId);
+		    query.setParameter("finYear", finYear);
+		    return (List<Object[]>)query.getResultList();
+		}
+		
+		@Override
+		public Object[] getManPowerTotalCounts(Long projectId) throws Exception {
+			String jpql = """
+				SELECT a.project_id,
+				    SUM(CASE WHEN b.desig_cadre = 'DRDS' THEN (b.man_power_count * b.man_power_days) ELSE 0 END) AS scientist_total_person_days,				             
+				    SUM(CASE WHEN b.desig_cadre = 'DTDC'  THEN (b.man_power_count * b.man_power_days) ELSE 0 END) AS technician_total_person_days,
+				    SUM(CASE WHEN b.desig_cadre = 'Admin & Allied' THEN (b.man_power_count * b.man_power_days) ELSE 0 END) AS admin_and_alliance_total_person_days,
+				    SUM(CASE WHEN b.desig_cadre = 'DRDS' THEN b.man_power_count ELSE 0 END) AS scientist_count,
+				    SUM(CASE WHEN b.desig_cadre = 'DTDC' THEN b.man_power_count ELSE 0 END) AS technician_count,
+				    SUM(CASE WHEN b.desig_cadre = 'Admin & Allied' THEN b.man_power_count ELSE 0 END) AS admin_and_alliance_count,
+				    SUM(CASE WHEN b.desig_cadre = 'DRDS' THEN b.man_power_days ELSE 0 END) AS scientist_days,
+				    SUM(CASE WHEN b.desig_cadre = 'DTDC' THEN b.man_power_days ELSE 0 END) AS technician_days,
+				    SUM(CASE WHEN b.desig_cadre = 'Admin & Allied' THEN b.man_power_days ELSE 0 END) AS admin_and_alliance_days
+				FROM project_resource_utilization a 
+				INNER JOIN project_manpower_utilization b ON b.resource_utilization_id = a.resource_utilization_id
+				WHERE a.project_id = :pid
+				GROUP BY a.project_id;
+					""";
+		    Query query = manager.createNativeQuery(jpql);
+		    query.setParameter("pid", projectId);
+		    List<Object[]> result = query.getResultList();
+		    return result.isEmpty() ? null : result.get(0);
+		}
+		
+		@Override
+		public List<Object[]> getInfrastructures(Long projectId,String finYear) throws Exception {
+			try {
+				String sql = """
+						  SELECT  b.name_of_infrastructure,
+						    SUM(CASE WHEN a.financial_year < :finYear THEN b.days_utilized ELSE 0 END) AS total_upto_last_year,
+						    SUM(CASE WHEN a.financial_year = :finYear THEN b.days_utilized ELSE 0 END) AS total_till_date,
+						    SUM(CASE WHEN a.financial_year = :finYear AND a.quarter = 'Q1' THEN b.days_utilized ELSE 0 END) AS q1_total,
+						    SUM(CASE WHEN a.financial_year = :finYear AND a.quarter = 'Q2' THEN b.days_utilized ELSE 0 END) AS q2_total,
+						    SUM(CASE WHEN a.financial_year = :finYear AND a.quarter = 'Q3' THEN b.days_utilized ELSE 0 END) AS q3_total,
+						    SUM(CASE WHEN a.financial_year = :finYear AND a.quarter = 'Q4' THEN b.days_utilized ELSE 0 END) AS q4_total
+						FROM project_resource_utilization a
+						INNER JOIN project_infrastructure_utilization b ON b.resource_utilization_id = a.resource_utilization_id AND b.is_active = 1
+						WHERE a.project_id = :pid
+						GROUP BY b.name_of_infrastructure
+						ORDER BY b.name_of_infrastructure ASC;
+						""";
+				Query query = manager.createNativeQuery(sql);
+			    query.setParameter("pid", projectId);
+			    query.setParameter("finYear", finYear);
+			    return (List<Object[]>)query.getResultList();
+			}catch (Exception e) {
+				e.printStackTrace();
+				return List.of();
+			}
+		}
+		
+		
+		@Override
+		public List<Object[]> getTrainings(Long projectId, String finYear) throws Exception {
+			try {
+				String sql = """
+						  SELECT  b.name_of_training,
+						    SUM(CASE WHEN a.financial_year < :finYear THEN b.cost ELSE 0 END) AS total_upto_last_year,
+						    SUM(CASE WHEN a.financial_year = :finYear THEN b.cost ELSE 0 END) AS total_till_date,
+						    SUM(CASE WHEN a.financial_year = :finYear AND a.quarter = 'Q1' THEN b.cost ELSE 0 END) AS q1_total,
+						    SUM(CASE WHEN a.financial_year = :finYear AND a.quarter = 'Q2' THEN b.cost ELSE 0 END) AS q2_total,
+						    SUM(CASE WHEN a.financial_year = :finYear AND a.quarter = 'Q3' THEN b.cost ELSE 0 END) AS q3_total,
+						    SUM(CASE WHEN a.financial_year = :finYear AND a.quarter = 'Q4' THEN b.cost ELSE 0 END) AS q4_total
+						FROM project_resource_utilization a
+						INNER JOIN project_training_utilization b ON b.resource_utilization_id = a.resource_utilization_id AND b.is_active = 1
+						WHERE a.project_id = :pid
+						GROUP BY b.name_of_training
+						ORDER BY b.name_of_training ASC;
+						""";
+				Query query = manager.createNativeQuery(sql);
+			    query.setParameter("pid", projectId);
+			    query.setParameter("finYear", finYear);
+			    return (List<Object[]>)query.getResultList();
+			}catch (Exception e) {
+				e.printStackTrace();
+				return List.of();
 			}
 		}
 }

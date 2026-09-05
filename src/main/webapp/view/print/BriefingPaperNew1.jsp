@@ -1,3 +1,5 @@
+<%@page import="com.vts.pfms.milestone.model.ProjectEconomicImpact"%>
+<%@page import="com.vts.pfms.milestone.dto.ProjectUtilizationBriefingDto"%>
 <%@page import="org.apache.commons.text.StringEscapeUtils"%>
 <%@page import="java.nio.file.Paths"%>
 <%@page import="java.nio.file.Path"%>
@@ -138,6 +140,13 @@ Committee committeeData = (Committee) request.getAttribute("committeeData");
 LocalDate before6months = LocalDate.now().minusDays(committeeData.getPeriodicDuration());
  
 List<Object[]> envisagedDemandlist = (List<Object[]> )request.getAttribute("envisagedDemandlist");
+
+
+List<List<Object[]>> sunsetmilestones= (List<List<Object[]>>)request.getAttribute("sunsetmilestones");
+List<List<ProjectUtilizationBriefingDto>> manpowerDetails = (List<List<ProjectUtilizationBriefingDto>>)request.getAttribute("manpowerDetails"); 
+List<List<ProjectUtilizationBriefingDto>> infrastructureDetails = (List<List<ProjectUtilizationBriefingDto>>)request.getAttribute("infrastructureDetails"); 
+List<List<ProjectUtilizationBriefingDto>> trainingDetails = (List<List<ProjectUtilizationBriefingDto>>)request.getAttribute("trainingDetails"); 
+List<List<ProjectEconomicImpact>> econmicImpactDetails = (List<List<ProjectEconomicImpact>>)request.getAttribute("econmicImpactDetails"); 
 
 %>
 
@@ -471,6 +480,20 @@ List<Object[]> envisagedDemandlist = (List<Object[]> )request.getAttribute("envi
 	        border-style: none !important;
 	        mso-border-alt: none !important;
 	    }
+
+		.bg-sunset{
+			background-color: #ffbf006b!important;
+		}
+
+		.text-left{
+			text-align: left!important;
+		}
+		.text-center{
+			text-align: center!important;
+		}
+		.text-right{
+			text-align: right!important;
+		}
 	</style>
 	
 	<div class="WordSection1">
@@ -1318,13 +1341,197 @@ List<Object[]> envisagedDemandlist = (List<Object[]> )request.getAttribute("envi
 							</table>
 				<%} %>
 				
+				<% for(int z=0 ; z<1;z++) {   %>
+							 <%if(wordFlag == null) {%> <h1 class="break"></h1> <%} else {%> <br class="break"> <%} %>
+<!-- -------------------------------------------------------------------------------------------- -->
+		<div align="left" style="margin-left: 10px;">
+		
+			<%-- <a href="<%= HyperlinkPath+ "/MilestoneActivityList.htm?ProjectId="+projectid %>" target="_top" rel="noopener noreferrer" > --%>
+				<b class="sub-title">6. Review of SunSet Milestones.  </b>
+			<!-- </a> -->
+   		</div>
+
+						
+							<table  class="subtables" style="align: left; margin-top: 10px; margin-bottom: 10px; margin-left: 25px;  border-collapse:collapse;" >
+								<thead>
+									<tr>
+										<td colspan="10" style="border: 0">
+											<!-- <p style="font-size: 10px;text-align: center"> 
+												 <span class="notassign">NA</span> : Not Assigned &nbsp;&nbsp;
+												 <span class="assigned">AA</span> : Activity Assigned &nbsp;&nbsp; 
+												 <span class="ongoing">OG</span> : On Going &nbsp;&nbsp; 
+												 <span class="delay">DO</span> : Delay - On Going &nbsp;&nbsp; 
+												 <span class="ongoing">RC</span> : Review & Close &nbsp;&nbsp;
+												 <span class="delay">FD</span> : Forwarded With Delay &nbsp;&nbsp;
+												 <span class="completed">CO</span> : Completed &nbsp;&nbsp; 
+												 <span class="completeddelay">CD</span> : Completed with Delay &nbsp;&nbsp; 
+												 <span class="inactive">IA</span> : InActive &nbsp;&nbsp;
+												 <span class="delaydays">DD</span> : Delayed days &nbsp;&nbsp;
+											 </p> -->
+										</td>									
+									</tr>
+								
+									<tr>
+										<th  style="width: 20px; ">SN</th>
+										<th  style="width: 30px; ">MS</th>
+										<th  style="width: 60px; ">L</th>
+										<th  style="width: 400px; ">System/ Subsystem/ Activities</th>
+										<th style="width: 120px; " >Start Date</th>
+										<th  style="width: 100px; "> ADC <br> PDC</th>
+									<!-- 	<th  style="width: 150px; "> ADC</th> -->
+										<th  style="width: 60px; "> Progress</th>
+									<!-- 	<th  style="width: 50px; "> Status</th> -->
+									 	<th  style="width: 260px; "> Remarks</th>
+									</tr>
+								</thead>
+								<% if( sunsetmilestones.get(z).size()>0){ 
+									long count1=1;
+									int milcountA=1;
+									int milcountB=1;
+									int milcountC=1;
+									int milcountD=1;
+									int milcountE=1;
+									
+									%>
+									<%int serial=1;for(Object[] obj:sunsetmilestones.get(z)){
+										
+										if(Integer.parseInt(obj[21].toString())<= Integer.parseInt(levelid)  
+												){
+										%>
+										<tr class="<% if("0".equals(obj[21].toString()) && "Y".equalsIgnoreCase(obj[31].toString())){ %> bg-sunset <%}%>">
+											<td style="text-align: center"><%=serial%></td>
+											<td>M<%=obj[0]!=null?(obj[0].toString()): " - " %></td>
+											
+											<td style="text-align: center">
+												<%
+												
+												if(obj[21].toString().equals("0")) {%>
+													<!-- L -->
+												<%	milcountA=1;
+													milcountB=1;
+													milcountC=1;
+													milcountD=1;
+													milcountE=1;
+												}else if(obj[21].toString().equals("1")) {
+													// changed on 13th sept
+													for(Map.Entry<Integer,String>entry:treeMapLevOne.entrySet()){
+														if(entry.getKey().toString().equalsIgnoreCase(obj[2].toString())){%>
+															<%=entry.getValue()!=null?(entry.getValue()): " - " %>
+													<%}} 
+													
+													%>
+													<%-- A-<%=milcountA %> --%>
+												<% /* milcountA++;
+													milcountB=1;
+													milcountC=1;
+													milcountD=1;
+													milcountE=1; */
+												}else if(obj[21].toString().equals("2")) {
+													for(Map.Entry<Integer,String>entry:treeMapLevTwo.entrySet()){
+														if(entry.getKey().toString().equalsIgnoreCase(obj[3].toString())){%>
+															<%=entry.getValue()!=null?(entry.getValue()): " - " %>
+													<%}}	
+													%>
+													<%-- B-<%=milcountB %> --%>
+												<%/* milcountB+=1;
+												milcountC=1;
+												milcountD=1;
+												milcountE=1; */
+												}else if(obj[21].toString().equals("3")) { %>
+													C-<%=milcountC %>
+												<%milcountC+=1;
+												milcountD=1;
+												milcountE=1;
+												}else if(obj[21].toString().equals("4")) { %>
+													D-<%=milcountD %>
+												<%
+												milcountD+=1;
+												milcountE=1;
+												}else if(obj[21].toString().equals("5")) { %>
+													E-<%=milcountE %>
+												<%milcountE++;
+												} %>
+											</td>
+
+											<td style="<%if(obj[21].toString().equals("0")) {%>font-weight: bold;<%}%>">
+												<%if(obj[21].toString().equals("0")) {%>
+													<%=obj[10]!=null?(obj[10].toString()): " - " %>
+												<%}else if(obj[21].toString().equals("1")) { %>
+													&nbsp;&nbsp;<%=obj[11]!=null?(obj[11].toString()): " - " %>
+												<%}else if(obj[21].toString().equals("2")) { %>
+													&nbsp;&nbsp;<%=obj[12]!=null?(obj[12].toString()): " - " %>
+												<%}else if(obj[21].toString().equals("3")) { %>
+													&nbsp;&nbsp;<%=obj[13]!=null?(obj[13].toString()): " - " %>
+												<%}else if(obj[21].toString().equals("4")) { %>
+													&nbsp;&nbsp;<%=obj[14]!=null?(obj[14].toString()): " - " %>
+												<%}else if(obj[21].toString().equals("5")) { %>
+													&nbsp;&nbsp;<%=obj[15]!=null?(obj[15].toString()): " - " %>
+												<%} %>
+											</td>
+												<td style="text-align: center" ><%= obj[7]!=null? sdf.format(sdf1.parse(obj[7].toString())) : " - " %></td>
+											<td style="text-align: center">
+											<% 
+												LocalDate StartDate = LocalDate.parse(obj[7].toString());
+												LocalDate EndDate = LocalDate.parse(obj[8].toString());
+												LocalDate OrgEndDate = LocalDate.parse(obj[9].toString());
+												int Progess = Integer.parseInt(obj[17].toString());
+												LocalDate CompletionDate =obj[24]!=null ? LocalDate.parse(obj[24].toString()) : null;
+												LocalDate Today = LocalDate.now();
+											%>
+											<% if ((obj[19].toString().equalsIgnoreCase("3") || obj[19].toString().equalsIgnoreCase("5")) && obj[24] != null) { %>	
+													<span 
+														<%if(Progess==0){ %>
+															class="assigned"
+														<%} else if(Progess>0 && Progess<100 && (OrgEndDate.isAfter(Today) || OrgEndDate.isEqual(Today) )){ %>
+															class="ongoing"
+														<%} else if( Progess>0 && Progess<100 && (OrgEndDate.isBefore(Today) )){ %>
+															class="delay"
+														<%} else if((CompletionDate!=null && ( CompletionDate.isBefore(OrgEndDate) ||  CompletionDate.isEqual(OrgEndDate)))){ %>
+															class="completed"
+														<%} else if((CompletionDate!=null && CompletionDate.isAfter(OrgEndDate) )){ %>
+															class="completeddelay"
+														<%}else if(CompletionDate!=null && Progess==0 &&  ( EndDate.isAfter(Today) ||  EndDate.isEqual(Today)) ){ %>
+															class="inactive"
+														<%}else{ %>
+															class="assigned"
+														<%} %>
+														> <%=sdf.format(sdf1.parse(obj[24].toString()))%> </span>
+													
+												 <% } else {  %> - <% } %>
+											
+											
+											<br>
+												<%if(! LocalDate.parse(obj[8].toString()).isEqual(LocalDate.parse(obj[9].toString())) ){ %> 
+												<span style="color:black;font-weight: bold;">	<%= sdf.format(sdf1.parse(obj[8].toString()))%></span><br> 
+												<%}%>
+												<span <%if( LocalDate.parse(obj[8].toString()).isEqual(LocalDate.parse(obj[9].toString()))) {%>style="color:black;font-weight: bold;"<%} %>><%=sdf.format(sdf1.parse(obj[9].toString())) %></span>
+											</td>
+
+
+											<td style="text-align: center"><%=obj[17]!=null?(obj[17].toString()): " - "%>%</td>
+						
+											<td style="overflow-wrap: break-word !important; word-break: break-all !important; white-space: normal !important;"><%if(obj[23]!=null){%><%=obj[23]%><%} %></td>
+										</tr>
+									<%count1++;serial++;}} %>
+								<%} else{ %>
+								<tr><td colspan="9" style="text-align:center; "> Nil</td></tr>
+								
+								
+								<%} %>
+							</table>
+				<%} %>
+				
+				
+				
+				
+				
 	<% for(int z=0 ; z<1;z++) {   %>
 	
 	
 						 <%if(wordFlag == null) {%> <h1 class="break"></h1> <%} else {%> <br class="break"> <%} %>
 <!-- ------------------------------------------------------------------------------------------------------------ -->
 
-		<div align="left" style="margin-left: 10px;"><b class="sub-title">6. Details of work and current status of sub system with major milestones ( since last <%= CommitteeCode!=null?(CommitteeCode).toUpperCase():" - " %> meeting ) period </b></div> 
+		<div align="left" style="margin-left: 10px;"><b class="sub-title">7. Details of work and current status of sub system with major milestones ( since last <%= CommitteeCode!=null?(CommitteeCode).toUpperCase():" - " %> meeting ) period </b></div> 
 						
 			
 			<div align="left" style="margin-left: 15px;">
@@ -1660,7 +1867,7 @@ List<Object[]> envisagedDemandlist = (List<Object[]> )request.getAttribute("envi
 		for(int z=0 ; z<projectidlist.size();z++) {   %>
 		<!-- ----------------------------------------------7a. Procurement Status------------------------------------------------- -->
 						<%if(wordFlag == null) {%> <h1 class="break"></h1> <%} else {%> <br class="break"> <%} %>
-						<div align="left" style="margin-left: 10px;"><b class="sub-title">7. Details of Procurement</b></div>
+						<div align="left" style="margin-left: 10px;"><b class="sub-title">8. Details of Procurement</b></div>
 							<div align="left" style="margin-left: 15px;margin-top: 5px;"><b class="mainsubtitle">(a<%if(projectidlist.size()>1) {%><%="."+chapter++%><%} %>)Details of Procurement plan (Major Items) 			 </b>  <%if(projectidlist.size()>1) {%> (<b><%=ProjectDetail.get(z)[1]%><% if (z > 0) { %>(SUB)<% } %>  <%} %></b>)</div>
 							<div align="right"> <span class="currency" style="font-weight: bold;width: 970px !important;" >(In &#8377; Lakhs)</span></div>
 							
@@ -2109,10 +2316,10 @@ List<Object[]> envisagedDemandlist = (List<Object[]> )request.getAttribute("envi
 					
 		<%} %>	
 			<% char fch='a'; for(int z=0 ; z<projectidlist.size();z++) {   %>
-					<!-- ----------------------------------------------8. Overall financial Status------------------------------------------------- -->
+					<!-- ----------------------------------------------9. Overall financial Status------------------------------------------------- -->
 					<%if(wordFlag == null) {%> <h1 class="break"></h1> <%} else {%> <br class="break"> <%} %>	
 		 
-   					<div align="left" style="margin-left: 10px;"><b class="sub-title">8 <%if(projectidlist.size()>1) {%> (<%=(fch++) %>) <%} %>. Overall Financial Status </b> 			<b><%=ProjectDetail.get(z)[1]!=null?(ProjectDetail.get(z)[1].toString()): " - "%><% if (z > 0) { %>(SUB)<% } %>  </b></div><div align="right"><b><span class="currency" >(&#8377; <span>Crore</span>)</span></b></div>
+   					<div align="left" style="margin-left: 10px;"><b class="sub-title">9. <%if(projectidlist.size()>1) {%> (<%=(fch++) %>) <%} %>. Overall Financial Status </b> 			<b><%=ProjectDetail.get(z)[1]!=null?(ProjectDetail.get(z)[1].toString()): " - "%><% if (z > 0) { %>(SUB)<% } %>  </b></div><div align="right"><b><span class="currency" >(&#8377; <span>Crore</span>)</span></b></div>
 						 
 						  	<table  class="subtables" style="align: left; margin-top: 10px; margin-bottom: 10px; margin-left: 25px;  border-collapse:collapse;" >
 						  	    <thead>
@@ -2296,9 +2503,9 @@ List<Object[]> envisagedDemandlist = (List<Object[]> )request.getAttribute("envi
 				<div align="left" style="margin-left: 10px;">
 				<%-- <a href="<%= HyperlinkPath+ "/MilestoneActivityList.htm?ProjectId="+projectid %>" target="_top" rel="noopener noreferrer" > --%>
 				<%if(CommitteeCode.equalsIgnoreCase("EB")){ %>
-   							<b class="sub-title">9. Action Plan for Next Six Months - Technical Milestones with Financial Outlay : </b>  
+   							<b class="sub-title">10. Action Plan for Next Six Months - Technical Milestones with Financial Outlay : </b>  
 				<%}else { %>
-							<b class="sub-title">9. Action Plan for Next Three Months - Technical Milestones with Financial Outlay : </b> 
+							<b class="sub-title">10. Action Plan for Next Three Months - Technical Milestones with Financial Outlay : </b> 
 				<%} %>
 				<!-- </a> -->
 		
@@ -2460,13 +2667,268 @@ List<Object[]> envisagedDemandlist = (List<Object[]> )request.getAttribute("envi
 								</tbody>
 							</table>
 <% } %>
+<!-- ----------------------------------------------10. Action plan for next three------------------------------------------------- -->
+
+	<% for(int z=0 ; z<1;z++) {   %>
+		<%if(wordFlag == null) {%> <h1 class="break"></h1> <%} else {%> <br class="break"> <%} %>
+<!-- -------------------------------------------------------------------------------------------- -->
+		<div align="left" style="margin-left: 10px;">
+				<b class="sub-title">11. Valuation of Technologies.  </b>
+   		</div>
+   		<div align="left" style="margin-top: 5px;margin-left: 10px;"><b class="mainsubtitle">(a) ManPower Utilisation in days. </b>
+   		
+	   		<table  class="subtables" style="align: left; margin-top: 10px; margin-bottom: 10px; margin-left: 25px;  border-collapse:collapse;" > 
+	   			<thead>
+			        <tr>
+			            <th rowspan="2" class="width60">
+			                ManPower Utilisation in days
+			            </th>
+			            <th colspan="4" class="width30">
+			                Man-days utilised
+			            </th>
+			            <th rowspan="2" class="width60">
+			                (cummulative past years)
+			            </th>
+			            <th rowspan="2" class="width50">
+			                (cummulative Till date)
+			            </th>
+			        </tr>
+			        <tr>
+				        <th class="width150">(1<sup>st</sup> Quarter)</th>
+						<th class="width150">(2<sup>nd</sup> Quarter)</th>
+						<th class="width150">(3<sup>rd</sup> Quarter)</th>
+						<th class="width150">(4<sup>th</sup> Quarter)</th>
+			        </tr>
+			    </thead>
+			    <% 
+				if(manpowerDetails != null && manpowerDetails.get(z).size()>0) { 		
+					for(ProjectUtilizationBriefingDto obj : manpowerDetails.get(z)){
+						
+						%>
+						<tr>
+						    <td><%= obj.getDesigCrade() != null ? obj.getDesigCrade() : "-" %></td>
+						
+						    <td class="text-center"><%= obj.getFirstQuarter() != null ? obj.getFirstQuarter() : "-" %></td>
+						
+						    <td class="text-center"><%= obj.getSecondQuarter() != null ? obj.getSecondQuarter() : "-" %></td>
+						
+						    <td class="text-center"><%= obj.getThirdQuarter() != null ? obj.getThirdQuarter() : "-" %></td>
+						
+						    <td class="text-center"><%= obj.getFourthQuarter() != null ? obj.getFourthQuarter() : "-" %></td>
+						
+						    <td class="text-center"><%= obj.getCummulativePastYears() != null ? obj.getCummulativePastYears() : "-" %></td>
+						
+						    <td class="text-center"><%= obj.getCummulativeTillDate() != null ? obj.getCummulativeTillDate() : "-" %></td>
+						</tr>
+					<%} 
+					} else{ %>
+					<tr>
+						<td colspan="9" class="text-center"> Nil</td>
+					</tr>
+				<%} %>
+	   		</table>   		
+   		</div>
+   		
+   		
+   		<div align="left" style="margin-top: 5px;margin-left: 10px;"><b class="mainsubtitle">(b) Utilization of Established Infrastructure/ Facilities of the Lab/Sister Lab. </b>
+   		
+	   		<table  class="subtables" style="align: left; margin-top: 10px; margin-bottom: 10px; margin-left: 25px;  border-collapse:collapse;" > 
+				    <thead>
+				        <tr>
+				            <th colspan="2" class="width150">
+				               	(1<sup>st</sup> Quarter)
+				            </th>
+				            <th colspan="2" class="width150">
+				               	(2<sup>nd</sup> Quarter)
+				            </th>
+				            <th colspan="2" class="width150">
+				            	(3<sup>rd</sup> Quarter)
+				            </th>
+				            <th colspan="2" class="width150">
+				            	(4<sup>th</sup> Quarter)
+				            </th>
+				            <th rowspan="2" class="width60">
+				                (cummulative past years)
+				            </th>
+				            <th rowspan="2" class="width60">
+				                (cummulative Till date)
+				            </th>
+				        </tr>
+				        <tr>
+				            <th class="width150">Name of Infra/Facility</th>
+				            <th class="width150">Days Utilized</th>
+				            <th class="width150">Name of Infra/Facility</th>
+				            <th class="width150">Days Utilized</th>
+				            <th class="width150">Name of Infra/Facility</th>
+				            <th class="width150">Days Utilized</th>
+				            <th class="width150">Name of Infra/Facility</th>
+				            <th class="width150">Days Utilized</th>
+				        </tr>
+				    </thead>
+				    <% if(infrastructureDetails != null && infrastructureDetails.get(z).size()>0) { 									
+						for(ProjectUtilizationBriefingDto obj:infrastructureDetails.get(z)){
+							
+							%>
+							<tr>
+														
+							    <td class="text-left"><%= obj.getNameOfInfrastructure() != null ? obj.getNameOfInfrastructure() : "-" %></td>
+							    
+							    <td class="text-center"><%= obj.getFirstQuarter() != null ? obj.getFirstQuarter() : "-" %></td>
+							
+							    <td class="text-left"><%= obj.getNameOfInfrastructure() != null ? obj.getNameOfInfrastructure() : "-" %></td>
+							    
+							    <td class="text-center"><%= obj.getSecondQuarter() != null ? obj.getSecondQuarter() : "-" %></td>
+							
+							    <td class="text-left"><%= obj.getNameOfInfrastructure() != null ? obj.getNameOfInfrastructure() : "-" %></td>
+							    
+							    <td class="text-center"><%= obj.getThirdQuarter() != null ? obj.getThirdQuarter() : "-" %></td>
+							
+							    <td class="text-left"><%= obj.getNameOfInfrastructure() != null ? obj.getNameOfInfrastructure() : "-" %></td>
+							    
+							    <td class="text-center"><%= obj.getFourthQuarter() != null ? obj.getFourthQuarter() : "-" %></td>
+							
+							    <td class="text-center"><%= obj.getCummulativePastYears() != null ? obj.getCummulativePastYears() : "-" %></td>
+							
+							    <td class="text-center"><%= obj.getCummulativeTillDate() != null ? obj.getCummulativeTillDate() : "-" %></td>
+							</tr>
+						<%} 
+						} else{ %>
+						<tr>
+							<td colspan="10"  style="text-align: center!important;" > Nil</td>
+						</tr>
+					<%} %>
+	   		</table>
+   		</div>
+   		
+   		<div align="left" style="margin-top: 5px;margin-left: 10px;"><b class="mainsubtitle">(c) Training. </b>
+   		
+	   		<table  class="subtables" style="align: left; margin-top: 10px; margin-bottom: 10px; margin-left: 25px;  border-collapse:collapse;" > 
+	   		 	<thead>
+				        <tr>
+				            <th colspan="2" class="width150">
+				               	(1<sup>st</sup> Quarter)
+				            </th>
+				            <th colspan="2" class="width150">
+				               	(2<sup>nd</sup> Quarter)
+				            </th>
+				            <th colspan="2" class="width150">
+				            	(3<sup>rd</sup> Quarter)
+				            </th>
+				            <th colspan="2" class="width150">
+				            	(4<sup>th</sup> Quarter)
+				            </th>
+				            <th rowspan="2" class="width60">
+				                (cummulative past years)
+				            </th>
+				            <th rowspan="2" class="width60">
+				                (cummulative Till date)
+				            </th>
+				        </tr>
+				        <tr>
+				            <th class="width150">Name of Infra/Facility</th>
+				            <th class="width150">Days Utilized</th>
+				            <th class="width150">Name of Infra/Facility</th>
+				            <th class="width150">Days Utilized</th>
+				            <th class="width150">Name of Infra/Facility</th>
+				            <th class="width150">Days Utilized</th>
+				            <th class="width150">Name of Infra/Facility</th>
+				            <th class="width150">Days Utilized</th>
+				        </tr>
+				    </thead>
+				    <% if(trainingDetails != null && trainingDetails.get(z).size()>0) { 									
+						for(ProjectUtilizationBriefingDto obj:trainingDetails.get(z)){
+							
+							%>
+							<tr>
+														
+							    <td class="text-left"><%= obj.getNameOfTraining() != null ? obj.getNameOfTraining() : "-" %></td>
+							    
+							    <td class="text-center"><%= obj.getFirstQuarter() != null ? obj.getFirstQuarter() : "-" %></td>
+							
+							    <td class="text-left"><%= obj.getNameOfTraining() != null ? obj.getNameOfTraining() : "-" %></td>
+							    
+							    <td class="text-center"><%= obj.getSecondQuarter() != null ? obj.getSecondQuarter() : "-" %></td>
+							
+							    <td class="text-left"><%= obj.getNameOfTraining() != null ? obj.getNameOfTraining() : "-" %></td>
+							    
+							    <td class="text-center"><%= obj.getThirdQuarter() != null ? obj.getThirdQuarter() : "-" %></td>
+							
+							    <td class="text-left"><%= obj.getNameOfTraining() != null ? obj.getNameOfTraining() : "-" %></td>
+							    
+							    <td class="text-center"><%= obj.getFourthQuarter() != null ? obj.getFourthQuarter() : "-" %></td>
+							
+							    <td class="text-center"><%= obj.getCummulativePastYears() != null ? obj.getCummulativePastYears() : "-" %></td>
+							
+							    <td class="text-center"><%= obj.getCummulativeTillDate() != null ? obj.getCummulativeTillDate() : "-" %></td>
+							</tr>
+						<%} 
+						} else{ %>
+						<tr>
+							<td colspan="10"  style="text-align: center!important;" > Nil</td>
+						</tr>
+					<%} %>
+	   		</table>
+   		</div>
+						
+	<%} %>
+	<!-- --------------------------------------------------------------- 11. point end ---------------------------------------------------- -->
+	
+	<% for(int z=0 ; z<1;z++) {   %>
+		<%if(wordFlag == null) {%> <h1 class="break"></h1> <%} else {%> <br class="break"> <%} %>
+<!-- -------------------------------------------------------------------------------------------- -->
+		<div align="left" style="margin-left: 10px;">
+				<b class="sub-title">12. Economic Impact of project.  </b>
+				<table  class="subtables" style="align: left; margin-top: 10px; margin-bottom: 10px; margin-left: 25px;  border-collapse:collapse;" > 
+	   		 		<thead>
+				        <tr>
+				            <th class="width150">Sl. No.</th>
+				            <th class="width150">Economic Impact</th>
+				            <th class="width150">Details</th>
+				        </tr>
+				    </thead>
+					    <tbody>
+						<% if(econmicImpactDetails != null && econmicImpactDetails.get(z) != null && econmicImpactDetails.get(z).size() > 0) {
+						                    for(ProjectEconomicImpact obj : econmicImpactDetails.get(z)) { %>
+		                    <tr>
+		                        <td class="text-center">a)</td>
+		                        <td class="text-left"> Percentage Indigenous Content, Dependent Foreign Countries, Items Imported and Indigenization Efforts </td>
+		                        <td class="economic-value">  <%= obj.getIndigenousContentAndIndigenization() != null && !obj.getIndigenousContentAndIndigenization().trim().isEmpty() ? obj.getIndigenousContentAndIndigenization() : "-" %> </td>
+		                    </tr>
+		                    <tr>
+		                        <td class="text-center">b)</td>
+		                        <td class="economic-title"> International Collaborations Executed </td>
+		                        <td class="economic-value"> <%= obj.getInternationalCollaborationsExecuted() != null && !obj.getInternationalCollaborationsExecuted().trim().isEmpty() ? obj.getInternationalCollaborationsExecuted() : "-" %> </td>
+		                    </tr>
+		                    <tr>
+		                        <td class="text-center">c)</td>
+		                        <td class="economic-title"> Intellectual Property Rights Generated </td>
+		                        <td class="economic-value"> <%= obj.getIntellectualPropertyRights() != null && !obj.getIntellectualPropertyRights().trim().isEmpty() ? obj.getIntellectualPropertyRights() : "-" %> </td>
+		                    </tr>
+		                    <tr>
+		                        <td class="text-center">d)</td>
+		                        <td class="economic-title"> Export Potential </td>
+		                        <td class="economic-value"> <%= obj.getExportPotential() != null && !obj.getExportPotential().trim().isEmpty() ? obj.getExportPotential() : "-" %> </td>
+		                    </tr>
+		                    <tr>
+		                        <td class="text-center">e)</td>
+		                        <td class="economic-title"> Infrastructure created </td>
+		                        <td class="economic-value"> <%= obj.getInfrastructureCreated() != null && !obj.getInfrastructureCreated().trim().isEmpty() ? obj.getInfrastructureCreated() : "-" %> </td>
+		                    </tr>
+						<%}}else{ %>
+						<tr>
+							<td colspan="3" style="text-align: center!important;" >NIL</td>
+						</tr>
+						<%} %>
+                	</tbody>
+				</table>
+   		</div>
+   	<%} %>
 
 	<% for(int z=0 ; z<1;z++) {   %>
 			<%if(wordFlag == null) {%> <h1 class="break"></h1> <%} else {%> <br class="break"> <%} %>
-<!-- ----------------------------------------------8. Action plan for next three------------------------------------------------- -->
-<!-- ----------------------------------------------9.GANTT chart---------------------------------------------------------- -->
+<!-- ----------------------------------------------13.GANTT chart---------------------------------------------------------- -->
 			<div align="left" style="margin-left: 15px;">
-					<b class="sub-title">10. PERT/GANTT chart of overall project schedule :
+					<b class="sub-title">13. PERT/GANTT chart of overall project schedule :
 					<!--  [<span style="text-decoration: underline;">Original (as per Project sanction / Latest PDC extension) and Current</span>]: --> 
 				</b>
 			</div>
@@ -2507,7 +2969,7 @@ List<Object[]> envisagedDemandlist = (List<Object[]> )request.getAttribute("envi
 	
 		<% for(int z=0 ; z<1;z++) {   %>
 			<%if(wordFlag == null) {%> <h1 class="break"></h1> <%} else {%> <br class="break"> <%} %>
-			<div align="left" style="margin-left: 10px;"><b class="sub-title">11. Issues:</b></div>
+			<div align="left" style="margin-left: 10px;"><b class="sub-title">14. Issues:</b></div>
 			
 			<table class="subtables" style="align: left; margin-top: 10px; margin-bottom: 10px; margin-left: 25px;   border-collapse:collapse;" >
 						<thead>
@@ -2590,9 +3052,9 @@ List<Object[]> envisagedDemandlist = (List<Object[]> )request.getAttribute("envi
 			<%if(wordFlag == null) {%> <h1 class="break"></h1> <%} else {%> <br class="break"> <%} %>	
 			<div align="left" style="margin-left: 10px;"><b class="sub-title"> 
    							<%if(CommitteeCode.equalsIgnoreCase("EB")){ %>
-   								12. Other Relevant Points (if any) and Technical Work Carried Out For Last Six Months
+   								15. Other Relevant Points (if any) and Technical Work Carried Out For Last Six Months
 							<%}else { %>
-								12. Other Relevant Points (if any) and Technical Work Carried Out For Last Three Months
+								15. Other Relevant Points (if any) and Technical Work Carried Out For Last Three Months
 							<%} %>
    						</b></div>
    						
@@ -2607,7 +3069,7 @@ List<Object[]> envisagedDemandlist = (List<Object[]> )request.getAttribute("envi
 											<td style="text-align: justify;"><%=(TechWorkDataList.get(z)[2].toString()) %></td>
 										</tr>
 								<%}else{ %>
-									<tr><td colspan="2" style="text-align: left ;">Nil </td></tr>
+									<tr><td colspan="2" style="text-align: center ;">Nil </td></tr>
 								<%} %>
 									
 						</table>
@@ -2652,7 +3114,7 @@ List<Object[]> envisagedDemandlist = (List<Object[]> )request.getAttribute("envi
 			<% for(int z=0 ; z<1;z++) {   %>
 											<%if(wordFlag == null) {%> <h1 class="break"></h1> <%} else {%> <br class="break"> <%} %>		
 <!-- -------------------------------------------------------------------------------------------------------------------------------------------------------- -->
-						<div align="left" style="margin-left: 10px;"><b class="sub-title">13. Decision/Recommendations sought from <%=CommitteeCode.toUpperCase() %> Meeting :</b></div>
+						<div align="left" style="margin-left: 10px;"><b class="sub-title">16. Decision/Recommendations sought from <%=CommitteeCode.toUpperCase() %> Meeting :</b></div>
 							
 							<table class="subtables" style="align: left; margin-top: 10px; margin-bottom: 10px; margin-left: 25px;   border-collapse:collapse;" >
 			

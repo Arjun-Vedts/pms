@@ -1,8 +1,5 @@
 package com.vts.pfms.print.controller;
 
-
-
-
 import java.io.ByteArrayInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -119,6 +116,8 @@ import com.vts.pfms.committee.service.CommitteeService;
 import com.vts.pfms.header.service.HeaderService;
 import com.vts.pfms.master.dto.ProjectFinancialDetails;
 import com.vts.pfms.milestone.dto.MilestoneActivityLevelConfigurationDto;
+import com.vts.pfms.milestone.dto.ProjectUtilizationBriefingDto;
+import com.vts.pfms.milestone.model.ProjectEconomicImpact;
 import com.vts.pfms.milestone.service.MilestoneService;
 import com.vts.pfms.model.BriefingFinance;
 import com.vts.pfms.model.BriefingHeading;
@@ -201,9 +200,9 @@ public class PrintController {
 
 	private SimpleDateFormat sdf1=new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 	private  SimpleDateFormat sdf=new SimpleDateFormat("dd-MM-yyyy");
+	
 	@RequestMapping(value="PfmsPrint.htm", method = RequestMethod.POST)
-	public String PfmsPrint(HttpServletRequest req, HttpSession ses, RedirectAttributes redir,HttpServletResponse res)
-			throws Exception {
+	public String PfmsPrint(HttpServletRequest req, HttpSession ses, RedirectAttributes redir,HttpServletResponse res) throws Exception {
 		String UserId = (String) ses.getAttribute("Username");
 //		String LabCode =(String) ses.getAttribute("labcode");
 		logger.info(new Date() +"Inside PfmsPrint.htm "+UserId);		
@@ -1045,11 +1044,12 @@ public class PrintController {
 			
 			// Project Data
 			processProjectData(req, projectid, committeeid, uri, projectLabCode, UserId, IsIbasConnected,ses);
-			
-			List<Object[]> projectdatadetails = (List<Object[]>)req.getAttribute("projectdatadetails");
-			List<List<Object[]>> ebandpmrccount = (List<List<Object[]>>)req.getAttribute("ebandpmrccount");
-			List<Object[]> TechWorkDataList = (List<Object[]>)req.getAttribute("TechWorkDataList");
-			
+
+
+			List<Object[]> projectdatadetails = (List<Object[]>) req.getAttribute("projectdatadetails");
+			List<List<Object[]>> ebandpmrccount = (List<List<Object[]>>) req.getAttribute("ebandpmrccount");
+			List<Object[]> TechWorkDataList = (List<Object[]>) req.getAttribute("TechWorkDataList");
+
 			// Milestone Data for Committee
 			milestoneLevelDataMap(req, reviewMeetingListMap, projectid, committee.getCommitteeShortName().trim());
 			
@@ -3181,12 +3181,13 @@ public class PrintController {
 			Committee committee = service.getCommitteeData(committeeid);
 			List<Object[]> projectDetails2 = service.ProjectDetails(projectid);
 			String projectLabCode = projectDetails2.get(0)[5].toString();
+
 			
 	    	req.setAttribute("committeeData", committee);
 			req.setAttribute("committeeMetingsCount", service.ProjectCommitteeMeetingsCount(projectid, "0", "0", "0", "0", committee.getCommitteeShortName().trim()) );
 			
 			processProjectData(req, projectid, committeeid, uri, projectLabCode, UserId, IsIbasConnected,ses);
-	    	
+
 			Map<String, List<Object[]>> reviewMeetingListMap = new HashMap<String, List<Object[]>>();
 			for(Object[] obj : SpecialCommitteesList) {
 				reviewMeetingListMap.put(obj[1]+"", service.ReviewMeetingList(projectid, obj[1]+""));
@@ -3263,6 +3264,12 @@ public class PrintController {
 	    List<List<TechImages>> TechImages = new ArrayList<>();
 	    List<List<Object[]>> overallfinance = new ArrayList<>();
 
+		List<List<Object[]>> sunsetmilestones = new ArrayList<>();
+		List<List<ProjectUtilizationBriefingDto>> manpower = new ArrayList<>();
+		List<List<ProjectUtilizationBriefingDto>> infrastructure = new ArrayList<>();
+		List<List<ProjectUtilizationBriefingDto>> training = new ArrayList<>();
+		List<List<ProjectEconomicImpact>> econmicImpact  = new ArrayList<>();
+
 	    try {
 
 	    	List<String> Pmainlist = service.ProjectsubProjectIdList(projectid);
@@ -3284,6 +3291,12 @@ public class PrintController {
 	    		TechWorkDataList.add(service.TechWorkData(proid));
 	    		ProjectRevList.add(service.ProjectRevList(proid));
 	    		milestonesubsystemsnew.add(service.BreifingMilestoneDetails(proid, committeeid));
+	    		
+	    		sunsetmilestones.add(service.SunSetMilestones(proid));
+				manpower.add(milservice.getManPowerDetailsForBriefing(proid));
+				infrastructure.add(milservice.getInfrastructureDetailsForBriefing(proid));
+				training.add(milservice.getTrainingDetailsForBriefing(proid));
+				econmicImpact.add(milservice.getEconomicImpactForBriefing(proid));
 
 	    		Object[] prodetails = service.ProjectDataDetails(proid);
 	    		projectdatadetails.add(prodetails);
@@ -3298,6 +3311,8 @@ public class PrintController {
 		    		pdffiles.add(pdfs);
 	    		}
 	    		req.setAttribute("envisagedDemandlist", service.getEnvisagedDemandList(projectid));
+
+
 
 //	    		List<ProjectFinancialDetails> projectDetails = fetchFromApi(
 //	    				uri + "/pfms_serv/financialStatusBriefing?ProjectCode=" + projectattribute[0] + "&rupess=10000000",
@@ -3364,8 +3379,14 @@ public class PrintController {
 	    	req.setAttribute("overallfinance", overallfinance);
 	    	req.setAttribute("projectidlist", Pmainlist);
 
-	    	return 1;
-	    }catch (Exception e) {
+			req.setAttribute("sunsetmilestones", sunsetmilestones);
+			req.setAttribute("manpowerDetails", manpower);
+			req.setAttribute("infrastructureDetails", infrastructure);
+			req.setAttribute("trainingDetails", training);
+			req.setAttribute("econmicImpactDetails", econmicImpact);
+			
+			return 1;
+		} catch (Exception e) {
 			e.printStackTrace();
 			return 0;
 		}
@@ -3542,6 +3563,7 @@ public class PrintController {
 			return 0;
 		}
 	}
+	
 	/* ******************************* Briefing Paper Presentation New Changes ************************ */
 	
 	private int setMilestoneDetailsToResponse(Model model, HttpServletRequest req, HttpSession ses,
